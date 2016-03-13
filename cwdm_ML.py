@@ -26,40 +26,6 @@ from sklearn.cross_validation import ShuffleSplit, StratifiedShuffleSplit
 global localpath
 localpath = '/Users/dpmorg/gdrive/research/cwdm_ML/'
 
-def fileprep(filename):
-    # Getting rid of astropy.table format. Annoying to use.
-    t = Table.read(localpath+'data/'+filename)
-
-    data = collections.OrderedDict()
-    for col in t.colnames:
-        data[col.lower()] = np.array(t[col]).byteswap().newbyteorder()
-
-    df = pd.DataFrame.from_dict(data)
-
-    # Quality cuts on the data
-    quality_cut = np.where((df['u_e'] <= 3.*df['u_e'].median()) &
-                           (df['g_e'] <= 3.*df['g_e'].median()) &
-                           (df['r_e'] <= 3.*df['r_e'].median()) &
-                           (df['i_e'] <= 3.*df['i_e'].median()) &
-                           (df['z_e'] <= 3.*df['z_e'].median()) &
-                           (df['u'] > 0.) & (df['u'] <= 22.0) &
-                           (df['g'] > 0.) & (df['g'] <= 21.5) &
-                           (df['r'] > 0.) & (df['r'] <= 21.5) &
-                           (df['i'] > 0.) & (df['i'] <= 21.5) &
-                           (df['z'] > 0.) & (df['z'] <= 21.5))[0]
-
-    df = df.iloc[quality_cut]
-
-    # Color cuts on the data
-    color_cut = np.where((df['u'] - df['g'] >= -1) &
-                         (df['u'] - df['g'] <= 2) &
-                         (df['g'] - df['r'] > -0.6) &
-                         (df['g'] - df['r'] < 1.4))[0]
-
-    df = df.iloc[color_cut]
-
-    return df
-
 def test_classifiers():
     TRAINING = 'ugrizTraining.fits'
 
@@ -243,3 +209,37 @@ def plot_all_classifiers(filename=None):
 
     # Close pdf
     pdf.close()
+
+def fileprep(filename):
+    # Getting rid of astropy.table format. Annoying to use.
+    t = Table.read(localpath+'data/'+filename)
+
+    data = collections.OrderedDict()
+    for col in t.colnames:
+        data[col.lower()] = np.array(t[col]).byteswap().newbyteorder()
+
+    df = pd.DataFrame.from_dict(data)
+
+    # Quality cuts on the data
+    quality_cut = np.where((df['u_e'] <= 3.*df['u_e'].median()) &
+                           (df['g_e'] <= 3.*df['g_e'].median()) &
+                           (df['r_e'] <= 3.*df['r_e'].median()) &
+                           (df['i_e'] <= 3.*df['i_e'].median()) &
+                           (df['z_e'] <= 3.*df['z_e'].median()) &
+                           (df['u'] > 0.) & (df['u'] <= 22.0) &
+                           (df['g'] > 0.) & (df['g'] <= 21.5) &
+                           (df['r'] > 0.) & (df['r'] <= 21.5) &
+                           (df['i'] > 0.) & (df['i'] <= 21.5) &
+                           (df['z'] > 0.) & (df['z'] <= 21.5))[0]
+
+    df = df.iloc[quality_cut]
+
+    # Color cuts on the data
+    color_cut = np.where((df['u'] - df['g'] >= -1) &
+                         (df['u'] - df['g'] <= 2) &
+                         (df['g'] - df['r'] > -0.6) &
+                         (df['g'] - df['r'] < 1.4))[0]
+
+    df = df.iloc[color_cut]
+
+    return df
