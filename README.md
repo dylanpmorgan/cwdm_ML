@@ -22,14 +22,14 @@ space, typically done by eye (shown below). With this code, I explore the merits
 supervised ensemble classification algorithms from sklearn in more accurately
 identifying WD+dM pairs.
 
-![uz_rz_cuts](https://cloud.githubusercontent.com/assets/10521443/13731713/5ed55adc-e946-11e5-95af-d391d531e870.png)
+![uz_rz_cuts](https://cloud.githubusercontent.com/assets/10521443/13748496/7424b6ac-e9d3-11e5-9c82-234316fceebc.png)
 
 ## Progress
 
 Right now I am testing the different ensemble classification algorithms as shown below.
 
-![testing_classifiers](https://cloud.githubusercontent.com/assets/10521443/13731712/5ed35b06-e946-11e5-85a0-6fb35f794ee5.png)
-[all_ugriz_classifiers.pdf](https://github.com/dylanpmorgan/cwdm_ML/files/171253/all_ugriz_classifiers.pdf)
+![testing_classifiers](https://cloud.githubusercontent.com/assets/10521443/13748495/741ccfd2-e9d3-11e5-858b-1c68aae66583.png)
+[all_ugriz_classifiers.pdf](https://github.com/dylanpmorgan/cwdm_ML/files/172182/all_ugriz_classifiers.pdf)
 
 The next steps are too optimize the fitting parameters for each classifier and
 decide which classifier is the best performing. Then, we will apply all the trained models

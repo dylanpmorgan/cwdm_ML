@@ -11,6 +11,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
 from matplotlib.backends.backend_pdf import PdfPages
+from matplotlib import rcParams
 import itertools
 import pyfits
 import pandas as pd
@@ -43,11 +44,11 @@ def test_classifiers():
     filters = 'ugriz'
     color_combinations = list(itertools.combinations(filters,2))
     color_cut_combinations = list(itertools.combinations(color_combinations,2))
-    # Get unpack color labels
+    # Unpack color labels
     color_labels = ["".join([cc[0][0],cc[0][1],cc[1][0],cc[1][1]]) for cc in color_cut_combinations]
 
     # Training and test size
-    N = 100
+    N = 250
     # Select randomly from training and testing
     y = training["iscwdm"]
     sss = StratifiedShuffleSplit(y, n_iter=1, test_size=N, train_size=N)
@@ -65,19 +66,34 @@ def test_classifiers():
         # Initialize the classifier
         # Train the classifier on each color cut
         for label, color_cut in zip(color_labels,color_cut_combinations):
-            # Train the model
-            cwdm = cwdmModel(train_smp, test_smp, model_name=name, model=clf,
-                              color_cut=color_cut, color_label=label)
+            # Pull out the colors from the training
+            trn_x = np.array(train_smp[color_cut[1][0]]-
+                             train_smp[color_cut[1][1]])
+            trn_y = np.array(train_smp[color_cut[0][0]]-
+                             train_smp[color_cut[0][1]])
+
+            X_trn, y_trn = np.vstack([trn_x,trn_y]).T, train_smp['iscwdm']
+
+            # Pull out the colors from the testing
+            tst_x = np.array(test_smp[color_cut[1][0]]-
+                             test_smp[color_cut[1][1]])
+            tst_y = np.array(test_smp[color_cut[0][0]]-
+                             test_smp[color_cut[0][1]])
+
+            X_tst, y_tst = np.vstack([tst_x,tst_y]).T, test_smp['iscwdm']
+
+            # Initiate the model
+            cwdm = cwdmModel(X_trn, y_trn, X_tst, y_tst, model=clf)
 
             # Train the classifier and get the score
-            cwdm.train(cwdm.X_train, cwdm.y_train)
-            score = cwdm.score(cwdm.X_test, cwdm.y_test)
+            cwdm.fit(X_trn, y_trn)
+            score = cwdm.score(X_tst, y_tst)
 
             fits.loc[label,name] = cwdm
             scores.loc[label,name] = score
 
     # Combine fits and scores
-    panel = pd.Panel({'fits' : fits, 'scores' : scores})
+    panel = pd.Panel({"fits" : fits, "scores" : scores})
 
     # Dump everything into a file
     the_time = str(time.time())
@@ -87,6 +103,7 @@ def test_classifiers():
         pickle.dump(panel, f)
 
 def plot_all_classifiers(filename=None):
+    rcParams.update({'figure.autolayout': True})
 
     if filename:
         filename = localpath+'data/'+filename
@@ -155,7 +172,7 @@ def plot_all_classifiers(filename=None):
 
             # Get the model and score
             data = trained_models['fits'].loc[color_cut,name]
-            fit = pickle.loads(data.trained)
+            #fit = pickle.loads(data.trained)
             score = trained_models['scores'].loc[color_cut,name]
 
             # Grab the data points
@@ -168,10 +185,10 @@ def plot_all_classifiers(filename=None):
 
             # Plot the decision boundary. For that, we will assign a color to each
             # point in the mesh [x_min, m_max]x[y_min, y_max].
-            if hasattr(fit, "decision_function"):
-                Z = fit.decision_function(np.c_[xx.ravel(), yy.ravel()])
+            if hasattr(data.clf, "decision_function"):
+                Z = data.clf.decision_function(np.c_[xx.ravel(), yy.ravel()])
             else:
-                Z = fit.predict_proba(np.c_[xx.ravel(), yy.ravel()])[:, 1]
+                Z = data.clf.predict_proba(np.c_[xx.ravel(), yy.ravel()])[:, 1]
 
             # Put the result into a color plot
             Z = Z.reshape(xx.shape)
@@ -187,7 +204,7 @@ def plot_all_classifiers(filename=None):
             ax.set_ylim(yy.min(), yy.max())
             ax.text(xx.max() - .1, yy.min() + .1, ('%.2f' % score).lstrip('0'),
             size=15, horizontalalignment='right')
-            plt.gcf().subplots_adjust(bottom=0.10)
+            plt.gcf().subplots_adjust(bottom=0.10,left=0.10,right=0.90,top=0.90)
 
             # If on the first row of the page, print titles
             if j == 1: ax.set_title(name)
