@@ -30,7 +30,7 @@ localpath = '/Users/dpmorg/gdrive/research/cwdm_ML/'
 global TRAINING
 TRAINING = 'ugrizTraining.fits'
 
-def test_classifiers(N=250):
+def test_classifiers():
     # Load training data -- set up as pandas data frame.
     training = fileprep(TRAINING)
 
@@ -44,14 +44,9 @@ def test_classifiers(N=250):
     # Setting up the color-color combinations
     filters = 'ugriz'
 
-    # Select N (default=250) random objects from training file.
+    # Set up X, y
+    X = training
     y = training["iscwdm"]
-    sss = StratifiedShuffleSplit(y, n_iter=1, test_size=N, train_size=N)
-    trn_ind, tst_ind = tuple(sss)[0]
-
-    # Make sure train/test are the same across all colors and classifiers
-    X_train = training.iloc[trn_ind]
-    y_train = training["iscwdm"].iloc[trn_ind]
 
     # Create dictionary to store fits
     fits = {}
@@ -61,7 +56,7 @@ def test_classifiers(N=250):
         # Initialize the classifier
         # Train the classifier on each color cut
         cwdm = cwdmModel(model=clf, bands=filters)
-        cwdm_trained = cwdm.fit(X_train,y_train)
+        cwdm_trained = cwdm.fit(X,y)
 
         # Save model to dictionary
         fits[name] = cwdm_trained
@@ -72,6 +67,90 @@ def test_classifiers(N=250):
     print("\nINFO: Writing results to %s\n" % filename)
     with open(filename, "w") as f:
         pickle.dump(fits, f)
+
+def optimize_classifiers(filename=None):
+
+    if filename:
+        filename = localpath+'data/'+filename
+    else:
+        filename = localpath+'data/trained_models-1457903689.53.pkl'
+
+    # Load models
+    pkl_file = open(filename, 'rb')
+    trained_models = pickle.load(pkl_file)
+
+    # Training sample
+    training = fileprep(TRAINING)
+
+    # Testing sample
+    X = training
+    y = training["iscwdm"]
+
+    # Parameter grid for classifiers
+    param_grid = dict()
+    param_grid["RBF SVM"] = dict(gamma=np.logspace(-30, 20, 20, base=2),
+                                 C=np.logspace(-3, 40, 20, base=2))
+    param_grid["Nearest Neighbors"] = dict(n_neighbors=np.arange(3,15))
+    param_grid["Random Forest"] = dict(max_depth=np.arange(3,10),
+                                       n_estimators=np.linspace(10,50,5),
+                                       max_features=np.arange(1,5),
+                                       criterion=["gini","entropy"])
+
+    # Dictionary to hold the fits
+    optimized_fits = {}
+
+    # Loop through each classifier and optimize
+    # WARNING - Can take a really long time.
+    for model_name in trained_models.keys():
+        model = trained_models[model_name]
+        model.optimize_fit(X, y, param_grid=param_grid[model_name])
+
+        # Save model to dictionary
+        optimized_fits[name] = model
+
+    # Pickle dump
+    the_time = str(time.time())
+    filename = "".join([localpath,"data/","optimized_models-", the_time, ".pkl"])
+    print("\nINFO: Writing results to %s\n" % filename)
+    with open(filename, "w") as f:
+        pickle.dump(optimized_fits, f)
+
+def predict_cwdms(filename=None):
+    if filename:
+        filename = localpath+'data/'+filename
+    else:
+        filename = localpath+'data/trained_models-1457903689.53.pkl'
+
+    # Load models
+    pkl_file = open(filename, 'rb')
+    trained_models = pickle.load(pkl_file)
+
+    # Training sample
+    training = fileprep(TRAINING)
+
+    # Testing sample
+    X_test = training
+    y = training["iscwdm"]
+
+    # Loop through all the models
+    for model_name in trained_models.keys():
+        model_test = trained_models[model_name]
+
+        # Make predictions on the testing sample
+        y_pred = model_test.predict(X_test)
+
+        # Precision, recall
+        cwdm_true = sum(y==1)
+        cwdm_found = len(np.where((y_pred == 1) & (y == 1))[0])
+        cwdm_mispred = len(np.where((y_pred == 1) & (y == 0))[0])
+        cwdm_missed = len(np.where((y_pred == 0) & (y == 1))[0])
+
+        print """
+              Model name: %s
+              cwdms found: %i / %i
+              cwdms missclassified: %i
+              cwdms missed: %i
+              """ %(model_name, cwdm_found, cwdm_true, cwdm_mispred, cwdm_missed)
 
 def plot_all_classifiers(filename=None):
     rcParams.update({'figure.autolayout': True})
